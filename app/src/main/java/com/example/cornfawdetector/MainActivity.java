@@ -22,6 +22,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.cornfawdetector.ml.FawDetectorModel;
+import com.example.cornfawdetector.ml.Model;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.support.image.TensorImage;
@@ -84,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Integer imageSize = 224;
+        int imageSize = 224;
 
         //handle click, to classify images
         predict.setOnClickListener(new View.OnClickListener() {
@@ -92,7 +93,9 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                image = Bitmap.createScaledBitmap(image, imageSize, imageSize, true);
                 try {
-                FawDetectorModel model = FawDetectorModel.newInstance(getApplicationContext());
+
+                //FawDetectorModel model = FawDetectorModel.newInstance(getApplicationContext());
+                Model model = Model.newInstance(getApplicationContext());
 
                  //Creates inputs for reference.
                  TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, imageSize, imageSize, 3}, DataType.FLOAT32);
@@ -103,10 +106,10 @@ public class MainActivity extends AppCompatActivity {
                 ByteBuffer byteBuffer = tensorImage.getBuffer();*/
 
                 //initialize bytebuffer
-                ByteBuffer byteBuffer = ByteBuffer.allocateDirect(4 * imageSize * imageSize * 3);
-                byteBuffer.order(ByteOrder.nativeOrder());
+                    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(4 * imageSize * imageSize * 3);
+                    byteBuffer.order(ByteOrder.nativeOrder());
 
-                // get 1D array of 224 * 224 pixels in image
+               // get 1D array of 224 * 224 pixels in image
                 int [] intValues = new int[imageSize * imageSize];
                 image.getPixels(intValues, 0, image.getWidth(), 0, 0, image.getWidth(), image.getHeight());
 
@@ -124,7 +127,8 @@ public class MainActivity extends AppCompatActivity {
                 inputFeature0.loadBuffer(byteBuffer);
 
                 // Runs model inference and gets result.
-                FawDetectorModel.Outputs outputs = model.process(inputFeature0);
+                //FawDetectorModel.Outputs outputs = model.process(inputFeature0);
+                Model.Outputs outputs = model.process(inputFeature0);
                 TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
 
                 float[] confidences_ = outputFeature0.getFloatArray();
@@ -135,28 +139,18 @@ public class MainActivity extends AppCompatActivity {
                 //find the index of the class with the biggest confidence.
                 int maxPos = 0;
                 float maxConfidence = 0;
-                /*for (int i = 0; i < confidences_.length; i++) {
+                for (int i = 0; i < confidences_.length; i++) {
                     Log.d("POSITION " + i, String.valueOf(confidences_[i]));
                     if (confidences_[i] > maxConfidence) {
                         maxConfidence = confidences_[i];
                         maxPos = i;
                     }
-                }*/
-
-                String classPredicted = "";
-                if (confidences_[0] > maxConfidence) {
-                     classPredicted = "Fall Armyworm: " + String.format("%.2f",confidences_[0] * 100);
-                     Log.d("DEBUG", confidences_[0] + "c>max");
-
-                } else {
-                    classPredicted = "Healthy: " + String.format("%.2f",confidences_[0] * 100);
-                    Log.d("DEBUG", confidences_[0] + "c<max");
                 }
 
-                //String[] classes = {"Fall Armyworm", "Healthy"};
-                result.setText(classPredicted);
+                String[] classes = {"Fall Armyworm", "Healthy"};
+                result.setText(classes[maxPos]);
 
-/*                String s = "";
+                String s = "";
                 for(int i = 0; i < classes.length; i++){
                     try {
                         s += String.format("%s: %.1f%%\n", classes[i], confidences_[i] * 100);
@@ -164,8 +158,7 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 }
-                confidences.setText(s);*/
-
+                confidences.setText(s);
 
                 //Releases model resources if no longer used.
                 model.close();
@@ -175,7 +168,6 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
 
 }
 
