@@ -1,6 +1,17 @@
 package com.example.cornfawdetector;
 
-import static android.graphics.Bitmap.createScaledBitmap;
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.MediaStore;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
@@ -8,33 +19,11 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.Activity;
-import android.content.Intent;
-import android.graphics.Bitmap;
-import android.net.Uri;
-import android.os.Bundle;
-import android.provider.MediaStore;
-import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.TextView;
-import android.widget.Toast;
-
-import com.example.cornfawdetector.ml.FawDetectorModel;
-import com.example.cornfawdetector.ml.Model;
-
-import org.tensorflow.lite.DataType;
-import org.tensorflow.lite.support.image.TensorImage;
-import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
-
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Arrays;
+import java.util.List;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity{
 
     //UI Views
     private ImageView imageView;
@@ -43,6 +32,12 @@ public class MainActivity extends AppCompatActivity {
     private Button predict;
     private TextView result;
     private TextView confidences;
+    //private float threshold = 0.5F;
+    private Classifier classifier;
+    private int inputSize = 224;
+    private String modelPath = "FAW_Detector.tflite";
+    private String labelPath = "label.txt";
+
 
     Bitmap image;
 
@@ -57,7 +52,6 @@ public class MainActivity extends AppCompatActivity {
         takePhoto = findViewById(R.id.takePhoto);
         pickImage = findViewById(R.id.pickImage);
         result = findViewById(R.id.result);
-        confidences = findViewById(R.id.confidences);
         predict = findViewById(R.id.predict);
 
         //handle click, launch intent to take photo
@@ -84,92 +78,100 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+        
+        try {
+            initClassifier();
+            /*initViews();*/
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+  
 
         int imageSize = 224;
 
-        //handle click, to classify images
         predict.setOnClickListener(new View.OnClickListener() {
+
+                                       @Override
+                                       public void onClick(View view) {
+                                           Bitmap image = ((BitmapDrawable) ((ImageView) view).getDrawable()).getBitmap();
+                                           List<Classifier.Recognition> result = classifier.recognizeImage(image);
+                                           Toast.makeText(MainActivity.this, result.get(0).toString(), Toast.LENGTH_SHORT).show();
+                                       }
+                                   });
+
+        //handle click, to classify images
+        /*predict.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-               image = Bitmap.createScaledBitmap(image, imageSize, imageSize, true);
+                image = Bitmap.createScaledBitmap(image, imageSize, imageSize, true);
                 try {
 
-                //FawDetectorModel model = FawDetectorModel.newInstance(getApplicationContext());
-                Model model = Model.newInstance(getApplicationContext());
+                    FawDetector model = FawDetector.newInstance(getApplicationContext());
 
-                 //Creates inputs for reference.
-                 TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, imageSize, imageSize, 3}, DataType.FLOAT32);
+                    //Creates inputs for reference.
+                    TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, imageSize, imageSize, 3}, DataType.FLOAT32);
 
-              /*  TensorImage tensorImage = new TensorImage(DataType.FLOAT32);
-                tensorImage.load(image);
-
-                ByteBuffer byteBuffer = tensorImage.getBuffer();*/
-
-                //initialize bytebuffer
+                    TensorImage tensorImage = new TensorImage(DataType.FLOAT32);
+                    //tensorImage.load(image);
+                    //ByteBuffer byteBuffer = tensorImage.getBuffer();
+                    //initialize bytebuffer
                     ByteBuffer byteBuffer = ByteBuffer.allocateDirect(4 * imageSize * imageSize * 3);
                     byteBuffer.order(ByteOrder.nativeOrder());
 
-               // get 1D array of 224 * 224 pixels in image
-                int [] intValues = new int[imageSize * imageSize];
-                image.getPixels(intValues, 0, image.getWidth(), 0, 0, image.getWidth(), image.getHeight());
+                    // get 1D array of 224 * 224 pixels in image
+                    int [] intValues = new int[imageSize * imageSize];
+                    image.getPixels(intValues, 0, image.getWidth(), 0, 0, image.getWidth(), image.getHeight());
 
-                // iterate over pixels and extract R, G, and B values. Add to bytebuffer.
-                int pixel = 0;
-                for(int i = 0; i < imageSize; i++){
-                    for(int j = 0; j < imageSize; j++){
-                        int val = intValues[pixel++]; // RGB
-                        byteBuffer.putFloat(((val >> 16) & 0xFF) * (1.f / 255.f));
-                        byteBuffer.putFloat(((val >> 8) & 0xFF) * (1.f / 255.f));
-                        byteBuffer.putFloat((val & 0xFF) * (1.f / 255.f));
+                    // iterate over pixels and extract R, G, and B values. Add to bytebuffer.
+                    int pixel = 0;
+                    for(int i = 0; i < imageSize; i++){
+                        for(int j = 0; j < imageSize; j++){
+                            int val = intValues[pixel++]; // RGB
+                            byteBuffer.putFloat(((val >> 16) & 0xFF) * (1.f / 255.f));
+                            byteBuffer.putFloat(((val >> 8) & 0xFF) * (1.f / 255.f));
+                            byteBuffer.putFloat((val & 0xFF) * (1.f / 255.f));
+
+                        }
                     }
-                }
 
-                inputFeature0.loadBuffer(byteBuffer);
 
-                // Runs model inference and gets result.
-                //FawDetectorModel.Outputs outputs = model.process(inputFeature0);
-                Model.Outputs outputs = model.process(inputFeature0);
-                TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
+                    inputFeature0.loadBuffer(byteBuffer);
+                //Runs model inference and gets result
+                    FawDetector.Outputs outputs = model.process(inputFeature0);
+                    TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
 
-                float[] confidences_ = outputFeature0.getFloatArray();
+                    String classPredicted = "";
 
-                Log.d("DEBUG:", Arrays.toString(confidences_));
-                Log.d("DEBUG:", String.valueOf(confidences_[0]));
+                    /*if (outputFeature0.getFloatArray()[0] >= threshold) {
 
-                //find the index of the class with the biggest confidence.
-                int maxPos = 0;
-                float maxConfidence = 0;
-                for (int i = 0; i < confidences_.length; i++) {
-                    Log.d("POSITION " + i, String.valueOf(confidences_[i]));
-                    if (confidences_[i] > maxConfidence) {
-                        maxConfidence = confidences_[i];
-                        maxPos = i;
+                        classPredicted = "Healthy";
+                    } else {
+                        classPredicted = "Fall Armyworm";
                     }
-                }
 
-                String[] classes = {"Fall Armyworm", "Healthy"};
-                result.setText(classes[maxPos]);
 
-                String s = "";
-                for(int i = 0; i < classes.length; i++){
-                    try {
-                        s += String.format("%s: %.1f%%\n", classes[i], confidences_[i] * 100);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-                confidences.setText(s);
+
+                    result.setText(classPredicted);*/
 
                 //Releases model resources if no longer used.
-                model.close();
+               /* model.close();
                 } catch (IOException e) {
                 // TODO Handle the exception
                  }
 
             }
-        });
+        });*/
 
 }
+
+    /*private void initViews() {
+        findViewById(R.id.imageView).setOnClickListener(this);
+    }*/
+
+    private void initClassifier() throws IOException {
+        classifier = new Classifier(getAssets(), modelPath, labelPath, inputSize);
+    }
+
 
     private ActivityResultLauncher<Intent> galleryActivityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -222,5 +224,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
     );
+
 
 }

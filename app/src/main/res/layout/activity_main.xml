@@ -12,8 +12,8 @@
     <!--ImageView: set image after picking from gallery-->
     <ImageView
         android:id="@+id/imageView"
-        android:layout_width="370sp"
-        android:layout_height="370sp"
+        android:layout_width="350sp"
+        android:layout_height="350sp"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="10sp"
         android:adjustViewBounds="true"
@@ -39,28 +39,18 @@
         android:text=""
         android:textColor="#C30000"
         android:textStyle="bold"
-        android:textSize="27sp"
+        android:textSize="20sp"
         android:id="@+id/result"
         android:layout_below="@+id/classified"
         />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:text=""
-        android:textColor="#C30000"
-        android:textSize="20sp"
-        android:id="@+id/confidences"
-        android:layout_below="@+id/result"
-        />
 
     <!--Button: launch intent to take photo from gallery-->
     <Button
         android:id="@+id/predict"
         android:text="Predict"
         android:textAllCaps="false"
-        android:textSize="21sp"
+        android:textSize="20sp"
         android:textStyle="bold"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -74,7 +64,7 @@
         android:id="@+id/takePhoto"
         android:text="Take Photo"
         android:textAllCaps="false"
-        android:textSize="21sp"
+        android:textSize="20sp"
         android:textStyle="bold"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -89,7 +79,7 @@
         android:id="@+id/pickImage"
         android:text="Launch Gallery"
         android:textAllCaps="false"
-        android:textSize="21sp"
+        android:textSize="20sp"
         android:textStyle="bold"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
